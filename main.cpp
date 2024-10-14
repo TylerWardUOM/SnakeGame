@@ -3,12 +3,40 @@
 #include "C12832.h"
 #include "led.h"
 
+class Fruit{
+    private:
+        int x;
+        int y;
+    public:
+        Fruit():x(rand()%128),y(rand()%32){}
+
+        void move(){
+            x=rand()%128;
+            y=rand()%32;
+        }
+
+        int get_x(){
+            return x;
+        }
+
+        int get_y(){
+            return y;
+        }
+
+        void draw(C12832& lcd) {
+            //lcd.re(); // Clear the buffer before drawing
+
+            lcd.pixel(x, y, 1); // Set pixel in buffer
+
+            lcd.copy_to_lcd(); // Transfer the buffer to the actual LCD
+        }
+};
 
 class Player{
     private:
         int size;
         const int maxsize;
-        int cords[50][2];
+        int cords[300][2];
         int velocity[2];
 
         void movebody() {
@@ -20,7 +48,7 @@ class Player{
         }
 
     public:
-        Player():size(1),maxsize(50){
+        Player():size(1),maxsize(300){
             cords[0][0]=20;
             cords[0][1]=20;
             velocity[0]=0;
@@ -40,7 +68,7 @@ class Player{
                 // Copy the position of the last segment for the new segment
                 cords[size][0] = cords[size - 1][0];
                 cords[size][1] = cords[size - 1][1];
-                size++; // Increase the size of the snake
+                size+=5; // Increase the size of the snake
             }
         }
 
@@ -84,6 +112,15 @@ class Player{
             return false;
 
         }
+
+        bool check_collision_fruit(Fruit fruit){
+            if (cords[0][0]==fruit.get_x() && cords[0][1]==fruit.get_y()){
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
     
 };
 
@@ -99,22 +136,36 @@ class Game{
 };
 
 int main() {
+    srand(time(NULL));
     Joystick joystick(A2,A3,A4,A5,D4);
     Player player;
     C12832 lcd(D11, D13, D12, D7, D10);
     RGBLed led(D5,D9,D8); //for debug 
     led.setOff();
+    Fruit fruit;
+    int score = 0;
     while(1) {
         lcd.cls();
         player.setmove(joystick);
         player.move();
         player.draw(lcd);
+        fruit.draw(lcd);
+        lcd.locate(120, 3);
+        lcd.printf("%d",score);
         wait(0.1);
         //led.setOff();
         if (joystick.firePressed()){
             player.grow();
             //led.setWhite();
         }
-        printf("%d\n",player.check_collision_self());
+        if (player.check_collision_self()){
+            break;
+        }
+        if (player.check_collision_fruit(fruit)){
+            player.grow();
+            fruit.move();
+            score++;
+        }
+
     };
 };
